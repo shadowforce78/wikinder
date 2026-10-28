@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Wikinder — Tri de cartes",
+  "description": "Un onglet « Wikinder » pour trier ses cartes Wiki Masters façon Tinder : garder ou supprimer, avec prix moyen, progression exportable.",
+  "version": "1.0.0",
+  "permissions": [
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://www.wiki-masters.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.wiki-masters.com/*"
+      ],
+      "css": [
+        "nav.css"
+      ],
+      "js": [
+        "core.js",
+        "store.js",
+        "api.js",
+        "app.js",
+        "nav.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ui.css"
+      ],
+      "matches": [
+        "https://www.wiki-masters.com/*"
+      ]
+    }
+  ]
+}

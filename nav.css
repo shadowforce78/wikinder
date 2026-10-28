@@ -1,0 +1,22 @@
+/* Onglet « Wikinder » dans le menu du site (hors Shadow DOM). */
+.wikinder-nav {
+  border: 1px solid rgba(251, 113, 133, 0.28) !important;
+  background: rgba(244, 63, 94, 0.07) !important;
+  color: rgb(253, 164, 175) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.wikinder-nav:hover,
+.wikinder-nav.is-active {
+  border-color: rgba(251, 113, 133, 0.5) !important;
+  background: rgba(244, 63, 94, 0.16) !important;
+  color: #fff !important;
+}
+
+.wikinder-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(251, 113, 133);
+}
