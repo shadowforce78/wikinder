@@ -1,4 +1,4 @@
-// Contrôleur + interface de Wikinder : plein écran en Shadow DOM, ouvert depuis l'onglet « Wikinder » du site.
+// Contrôleur + interface de Wikinder : Shadow DOM posé dans la zone de contenu du site (menu et en-tête du site restent visibles).
 (() => {
   const W = globalThis.Wikinder;
   const { core, store, api } = W;
@@ -24,7 +24,7 @@
   let protections = { tradeIds: new Set(), saleIds: new Set(), fetchedAt: 0 };
   let queue = [], pos = 0, orderIndex = new Map(), copies = new Map(), undoStack = [];
   let hidden = { done: 0, protectedCount: 0, rarity: 0, price: 0 };
-  let loading = null, loadError = null, isOpen = false, releaseLock = null, cardEl = null, uiTimer = null;
+  let loading = null, loadError = null, isOpen = false, releaseLock = null, cardEl = null, uiTimer = null, layoutTimer = null;
   const preloaded = new Set();
 
   function setProtections(raw, fallbackAt = 0) {
@@ -181,7 +181,7 @@
     css.rel = 'stylesheet'; css.href = chrome.runtime.getURL('ui.css');
     shadow.append(css);
     const overlay = el('div', 'overlay'); overlay.hidden = true;
-    overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', 'Wikinder');
+    overlay.setAttribute('role', 'region'); overlay.setAttribute('aria-label', 'Wikinder');
     overlay.innerHTML = `
       <header class="bar">
         <h1>🔥 Wikinder</h1>
@@ -482,6 +482,38 @@
     });
   }
 
+  // L'interface occupe la zone de contenu : on laisse libres le menu latéral et l'en-tête du site, mesurés à l'ouverture.
+  function layout() {
+    if (!ui || !isOpen) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let left = 0, top = 0;
+    const bar = document.getElementById('wikinder-nav')?.closest('aside, nav');
+    if (bar) {
+      const rect = bar.getBoundingClientRect();
+      if (rect.width && rect.left <= 2 && rect.width < vw * 0.6) left = Math.max(left, rect.right);
+      else if (rect.height && rect.top <= 2 && rect.height < vh * 0.4) top = Math.max(top, rect.bottom);
+    }
+    for (const header of document.querySelectorAll('header')) {
+      if (ui.host.contains(header)) continue;
+      const rect = header.getBoundingClientRect();
+      if (rect.width >= vw * 0.5 && rect.top <= 2 && rect.bottom > 0 && rect.bottom < vh * 0.35) top = Math.max(top, rect.bottom);
+    }
+    const style = ui.overlay.style;
+    style.left = `${Math.min(left, vw)}px`; style.top = `${Math.min(top, vh)}px`;
+    if (!ui.background) {
+      const bg = getComputedStyle(document.body).backgroundColor;
+      if (bg && !/rgba?\(.*,\s*0\)$|transparent/.test(bg)) style.background = bg;
+      ui.background = true;
+    }
+  }
+
+  const onLayout = () => requestAnimationFrame(layout);
+  // Un clic sur un autre lien du menu du site quitte Wikinder (le site navigue de son côté).
+  function onSiteClick(event) {
+    const link = event.target.closest?.('a');
+    if (link && link.id !== 'wikinder-nav' && !ui.host.contains(link)) close();
+  }
+
   async function open() {
     if (isOpen) return;
     ui ||= build();
@@ -489,8 +521,11 @@
     if (!release) { alert('Wikinder est déjà ouvert dans un autre onglet. Ferme-le d’abord.'); return; }
     releaseLock = release; isOpen = true;
     ui.overlay.hidden = false; ui.launcher.hidden = true;
-    document.documentElement.style.overflow = 'hidden';
     document.addEventListener('keydown', onKey, true);
+    document.addEventListener('click', onSiteClick, true);
+    window.addEventListener('resize', onLayout); window.addEventListener('scroll', onLayout, true);
+    layoutTimer = setInterval(layout, 1000);
+    layout();
     document.getElementById('wikinder-nav')?.classList.add('is-active');
     await ensureCollection();
     render();
@@ -500,8 +535,10 @@
     if (!isOpen) return;
     isOpen = false;
     ui.overlay.hidden = true;
-    document.documentElement.style.overflow = '';
     document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('click', onSiteClick, true);
+    window.removeEventListener('resize', onLayout); window.removeEventListener('scroll', onLayout, true);
+    clearInterval(layoutTimer);
     document.getElementById('wikinder-nav')?.classList.remove('is-active');
     releaseLock?.(); releaseLock = null;
     store.flush();
